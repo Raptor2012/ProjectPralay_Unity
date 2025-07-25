@@ -1,4 +1,4 @@
-﻿ using UnityEngine;
+﻿using UnityEngine;
 #if ENABLE_INPUT_SYSTEM 
 using UnityEngine.InputSystem;
 #endif
@@ -46,6 +46,41 @@ namespace StarterAssets
         [Tooltip("Time required to pass before entering the fall state. Useful for walking down stairs")]
         public float FallTimeout = 0.15f;
 
+        [Header("Camera Turn Feature")]
+        [Tooltip("Enable character turning with camera movement")]
+        public bool EnableCameraTurn = true;
+        
+        [Tooltip("Speed multiplier for character turning when stationary (higher = faster turn)")]
+        [Range(0.5f, 5f)]
+        public float CameraTurnSpeed = 1.5f;
+        
+        [Tooltip("Minimum camera rotation (in degrees) required to start turning character")]
+        [Range(0.1f, 5f)]
+        public float CameraTurnThreshold = 1f;
+        
+        [Tooltip("How much camera movement affects character rotation while moving")]
+        [Range(0f, 1f)]
+        public float MovingCameraTurnInfluence = 0f;
+
+        [Header("Dash Feature")]
+        [Tooltip("Enable dash ability")]
+        public bool EnableDash = true;
+        
+        [Tooltip("Dash speed multiplier")]
+        public float DashSpeed = 15.0f;
+        
+        [Tooltip("Dash duration in seconds")]
+        public float DashDuration = 0.3f;
+        
+        [Tooltip("Dash cooldown in seconds")]
+        public float DashCooldown = 1.5f;
+        
+        [Tooltip("Audio clip for dash sound")]
+        public AudioClip DashAudioClip;
+        
+        [Tooltip("Volume for dash audio")]
+        [Range(0, 1)] public float DashAudioVolume = 0.7f;
+
         [Header("Player Grounded")]
         [Tooltip("If the character is grounded or not. Not part of the CharacterController built in grounded check")]
         public bool Grounded = true;
@@ -91,12 +126,22 @@ namespace StarterAssets
         private float _jumpTimeoutDelta;
         private float _fallTimeoutDelta;
 
+        // dash variables
+        private bool _isDashing = false;
+        private float _dashTimeRemaining = 0f;
+        private float _dashCooldownRemaining = 0f;
+        private Vector3 _dashDirection;
+
+        // camera turn variables
+        private float _lastCameraYaw;
+
         // animation IDs
         private int _animIDSpeed;
         private int _animIDGrounded;
         private int _animIDJump;
         private int _animIDFreeFall;
         private int _animIDMotionSpeed;
+        private int _animIDDash; // New animation ID for dash
 
 #if ENABLE_INPUT_SYSTEM 
         private PlayerInput _playerInput;
@@ -122,6 +167,9 @@ namespace StarterAssets
             }
         }
 
+        // Public properties for external access
+        public bool IsDashing => _isDashing;
+        public bool CanDash => EnableDash && _dashCooldownRemaining <= 0f && Grounded;
 
         private void Awake()
         {
@@ -135,6 +183,7 @@ namespace StarterAssets
         private void Start()
         {
             _cinemachineTargetYaw = CinemachineCameraTarget.transform.rotation.eulerAngles.y;
+            _lastCameraYaw = _cinemachineTargetYaw;
             
             _hasAnimator = TryGetComponent(out _animator);
             _controller = GetComponent<CharacterController>();
@@ -156,9 +205,13 @@ namespace StarterAssets
         {
             _hasAnimator = TryGetComponent(out _animator);
 
+            UpdateDash();
             JumpAndGravity();
             GroundedCheck();
             Move();
+            
+            // Handle camera turn after movement to avoid conflicts
+            HandleCameraTurn();
         }
 
         private void LateUpdate()
@@ -173,6 +226,114 @@ namespace StarterAssets
             _animIDJump = Animator.StringToHash("Jump");
             _animIDFreeFall = Animator.StringToHash("FreeFall");
             _animIDMotionSpeed = Animator.StringToHash("MotionSpeed");
+            _animIDDash = Animator.StringToHash("Dash"); // Add this to your animator
+        }
+
+        private void UpdateDash()
+        {
+            // Update dash cooldown
+            if (_dashCooldownRemaining > 0f)
+            {
+                _dashCooldownRemaining -= Time.deltaTime;
+            }
+
+            // Handle dash input (only trigger on button press, not hold)
+            if (_input.dash && CanDash && !_isDashing)
+            {
+                StartDash();
+                _input.dash = false; // Reset input to prevent continuous triggering
+            }
+
+            // Update dash timer
+            if (_isDashing)
+            {
+                _dashTimeRemaining -= Time.deltaTime;
+                if (_dashTimeRemaining <= 0f)
+                {
+                    EndDash();
+                }
+            }
+        }
+
+        private void StartDash()
+        {
+            _isDashing = true;
+            _dashTimeRemaining = DashDuration;
+            _dashCooldownRemaining = DashCooldown;
+
+            // Determine dash direction
+            if (_input.move != Vector2.zero)
+            {
+                // Dash in movement direction relative to camera
+                Vector3 inputDirection = new Vector3(_input.move.x, 0.0f, _input.move.y).normalized;
+                _dashDirection = Quaternion.Euler(0.0f, _mainCamera.transform.eulerAngles.y, 0.0f) * inputDirection;
+            }
+            else
+            {
+                // Dash forward if no input
+                _dashDirection = transform.forward;
+            }
+
+            _dashDirection.y = 0f; // Keep dash horizontal
+            _dashDirection = _dashDirection.normalized;
+
+            // Play dash audio
+            if (DashAudioClip != null)
+            {
+                AudioSource.PlayClipAtPoint(DashAudioClip, transform.position, DashAudioVolume);
+            }
+
+            // Update animator
+            if (_hasAnimator)
+            {
+                _animator.SetBool(_animIDDash, true);
+            }
+        }
+
+        private void EndDash()
+        {
+            _isDashing = false;
+            
+            // Update animator
+            if (_hasAnimator)
+            {
+                _animator.SetBool(_animIDDash, false);
+            }
+        }
+
+        private void HandleCameraTurn()
+        {
+            if (!EnableCameraTurn || _isDashing) return;
+
+            // Only turn character based on camera when not moving
+            if (_input.move == Vector2.zero)
+            {
+                // Calculate how much the camera has moved since last frame
+                float cameraYawDelta = Mathf.DeltaAngle(_lastCameraYaw, _cinemachineTargetYaw);
+                
+                // Only process if camera movement is significant enough
+                if (Mathf.Abs(cameraYawDelta) > CameraTurnThreshold)
+                {
+                    // Gradually turn character to face camera direction
+                    float targetYaw = _cinemachineTargetYaw;
+                    float smoothedYaw = Mathf.SmoothDampAngle(transform.eulerAngles.y, targetYaw, 
+                        ref _rotationVelocity, RotationSmoothTime * CameraTurnSpeed);
+                    transform.rotation = Quaternion.Euler(0.0f, smoothedYaw, 0.0f);
+                }
+            }
+            else if (MovingCameraTurnInfluence > 0f)
+            {
+                // When moving, slightly influence the movement direction based on camera
+                float cameraYawDelta = Mathf.DeltaAngle(_lastCameraYaw, _cinemachineTargetYaw);
+                if (Mathf.Abs(cameraYawDelta) > CameraTurnThreshold)
+                {
+                    // Subtle influence on movement direction
+                    _targetRotation += cameraYawDelta * MovingCameraTurnInfluence * Time.deltaTime;
+                }
+            }
+
+            // Update last camera yaw for next frame
+            _lastCameraYaw = _cinemachineTargetYaw;
         }
 
         private void GroundedCheck()
@@ -213,6 +374,13 @@ namespace StarterAssets
 
         private void Move()
         {
+            // Handle dash movement
+            if (_isDashing)
+            {
+                _controller.Move(_dashDirection * (DashSpeed * Time.deltaTime) + new Vector3(0.0f, _verticalVelocity, 0.0f) * Time.deltaTime);
+                return;
+            }
+
             // set target speed based on move speed, sprint speed and if sprint is pressed
             float targetSpeed = _input.sprint ? SprintSpeed : MoveSpeed;
 
@@ -264,7 +432,6 @@ namespace StarterAssets
                 transform.rotation = Quaternion.Euler(0.0f, rotation, 0.0f);
             }
 
-
             Vector3 targetDirection = Quaternion.Euler(0.0f, _targetRotation, 0.0f) * Vector3.forward;
 
             // move the player
@@ -299,8 +466,8 @@ namespace StarterAssets
                     _verticalVelocity = -2f;
                 }
 
-                // Jump
-                if (_input.jump && _jumpTimeoutDelta <= 0.0f)
+                // Jump (disabled during dash)
+                if (_input.jump && _jumpTimeoutDelta <= 0.0f && !_isDashing)
                 {
                     // the square root of H * -2 * G = how much velocity needed to reach desired height
                     _verticalVelocity = Mathf.Sqrt(JumpHeight * -2f * Gravity);
