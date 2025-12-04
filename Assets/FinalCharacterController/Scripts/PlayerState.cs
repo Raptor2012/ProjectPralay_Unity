@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace GinjaGaming.FinalCharacterController
+namespace GOC.FinalCharacterController
 {
     public class PlayerState : MonoBehaviour
     {

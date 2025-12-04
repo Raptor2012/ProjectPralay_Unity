@@ -4,7 +4,7 @@ using System.Linq;
 using UnityEngine;
 using UnityEngine.Rendering;
 
-namespace GinjaGaming.FinalCharacterController
+namespace GOC.FinalCharacterController
 {
     public class PlayerAnimation : MonoBehaviour
     {

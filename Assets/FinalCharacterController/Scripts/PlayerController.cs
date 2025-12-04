@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-namespace GinjaGaming.FinalCharacterController
+namespace GOC.FinalCharacterController
 {
     [DefaultExecutionOrder(-1)]
     public class PlayerController : MonoBehaviour

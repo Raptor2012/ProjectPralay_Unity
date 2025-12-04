@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-namespace GinjaGaming.FinalCharacterController
+namespace GOC.FinalCharacterController
 {
     [DefaultExecutionOrder(-2)]
     public class ThirdPersonInput : MonoBehaviour, PlayerControls.IThirdPersonMapActions
