@@ -1,6 +1,7 @@
 using Cinemachine;
 using System.Collections;
 using System.Collections.Generic;
+using GOC.FinalCharacterController;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
