@@ -28,7 +28,7 @@
                     "name": "ToggleSprint",
                     "type": "Button",
                     "id": "2d62136a-c146-4b49-b506-7d903b95e54a",
-                    "expectedControlType": "Button",
+                    "expectedControlType": "",
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": false
@@ -37,7 +37,7 @@
                     "name": "Jump",
                     "type": "Button",
                     "id": "d5776ba5-3d05-42a1-87be-079b40e07be1",
-                    "expectedControlType": "Button",
+                    "expectedControlType": "",
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": false
@@ -46,7 +46,7 @@
                     "name": "ToggleWalk",
                     "type": "Button",
                     "id": "9860aac1-4769-40e0-a3b0-cdf19f96bb78",
-                    "expectedControlType": "Button",
+                    "expectedControlType": "",
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": false
@@ -245,7 +245,7 @@
                     "name": "Gathering",
                     "type": "Button",
                     "id": "d9ba9315-bc1d-4791-ad3e-9601169f85de",
-                    "expectedControlType": "Button",
+                    "expectedControlType": "",
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": false
@@ -254,7 +254,16 @@
                     "name": "Attacking",
                     "type": "Button",
                     "id": "42c2e099-ae12-4034-aaba-bb528b4d1e46",
-                    "expectedControlType": "Button",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "Aim",
+                    "type": "Button",
+                    "id": "c050b971-0f31-439b-a75c-1cb4fb14607e",
+                    "expectedControlType": "",
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": false
@@ -280,6 +289,17 @@
                     "processors": "",
                     "groups": "",
                     "action": "Attacking",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "95ea77e5-b484-44b1-890a-5e5ca3ace5f1",
+                    "path": "<Mouse>/rightButton",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Aim",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }

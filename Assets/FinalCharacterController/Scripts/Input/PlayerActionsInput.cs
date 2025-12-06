@@ -15,6 +15,7 @@ namespace GOC.FinalCharacterController
         private PlayerState _playerState;
         public bool GatherPressed { get; private set; }
         public bool AttackPressed { get; private set; }
+        public bool IsAiming { get; private set; }
         #endregion
 
         #region Startup
@@ -86,6 +87,21 @@ namespace GOC.FinalCharacterController
 
             AttackPressed = true;
         }
+
+        public void OnAim(InputAction.CallbackContext context)
+        {
+            if (context.performed)
+            {
+                IsAiming = true;
+                Cursor.visible = false;
+                Cursor.lockState = CursorLockMode.Locked;
+            }
+            else if (context.canceled)
+            {
+                IsAiming = false;
+            }
+        }
+
         #endregion
     }
 }
