@@ -28,6 +28,8 @@ namespace GOC.FinalCharacterController
         // Actions
         private static int isAttackingHash = Animator.StringToHash("isAttacking");
         private static int isGatheringHash = Animator.StringToHash("isGathering");
+        private static int isAimingHash = Animator.StringToHash("isAiming");
+        private static int startAimHash = Animator.StringToHash("startAim");
         private static int isPlayingActionHash = Animator.StringToHash("isPlayingAction");
         private int[] actionHashes;
 
@@ -40,6 +42,8 @@ namespace GOC.FinalCharacterController
         private float _sprintMaxBlendValue = 1.5f;
         private float _runMaxBlendValue = 1.0f;
         private float _walkMaxBlendValue = 0.5f;
+
+        private bool _wasAiming = false;
 
         private void Awake()
         {
@@ -63,6 +67,8 @@ namespace GOC.FinalCharacterController
             bool isSprinting = _playerState.CurrentPlayerMovementState == PlayerMovementState.Sprinting;
             bool isJumping = _playerState.CurrentPlayerMovementState == PlayerMovementState.Jumping;
             bool isFalling = _playerState.CurrentPlayerMovementState == PlayerMovementState.Falling;
+            bool isAiming = _playerState.CurrentPlayerMovementState == PlayerMovementState.Aiming || 
+                           (_playerActionsInput != null && _playerActionsInput.IsAiming);
             bool isGrounded = _playerState.InGroundedState();
             bool isPlayingAction = actionHashes.Any(hash => _animator.GetBool(hash));
 
@@ -81,6 +87,18 @@ namespace GOC.FinalCharacterController
             _animator.SetBool(isRotatingToTargetHash, _playerController.IsRotatingToTarget);
             _animator.SetBool(isAttackingHash, _playerActionsInput.AttackPressed);
             _animator.SetBool(isGatheringHash, _playerActionsInput.GatherPressed);
+            _animator.SetBool(isAimingHash, isAiming);
+            
+            // Handle aim start trigger
+            if (isAiming && !_wasAiming)
+            {
+                // Just started aiming - trigger the start aim
+                print("Triggering StartAim");
+                _animator.SetTrigger(startAimHash);
+            }
+            
+            _wasAiming = isAiming;
+            
             _animator.SetBool(isPlayingActionHash, isPlayingAction);
 
             _animator.SetFloat(inputXHash, _currentBlendInput.x);

@@ -116,7 +116,7 @@ namespace GOC.FinalCharacterController
                     ""name"": ""ToggleSprint"",
                     ""type"": ""Button"",
                     ""id"": ""2d62136a-c146-4b49-b506-7d903b95e54a"",
-                    ""expectedControlType"": ""Button"",
+                    ""expectedControlType"": """",
                     ""processors"": """",
                     ""interactions"": """",
                     ""initialStateCheck"": false
@@ -125,7 +125,7 @@ namespace GOC.FinalCharacterController
                     ""name"": ""Jump"",
                     ""type"": ""Button"",
                     ""id"": ""d5776ba5-3d05-42a1-87be-079b40e07be1"",
-                    ""expectedControlType"": ""Button"",
+                    ""expectedControlType"": """",
                     ""processors"": """",
                     ""interactions"": """",
                     ""initialStateCheck"": false
@@ -134,7 +134,7 @@ namespace GOC.FinalCharacterController
                     ""name"": ""ToggleWalk"",
                     ""type"": ""Button"",
                     ""id"": ""9860aac1-4769-40e0-a3b0-cdf19f96bb78"",
-                    ""expectedControlType"": ""Button"",
+                    ""expectedControlType"": """",
                     ""processors"": """",
                     ""interactions"": """",
                     ""initialStateCheck"": false
@@ -333,7 +333,7 @@ namespace GOC.FinalCharacterController
                     ""name"": ""Gathering"",
                     ""type"": ""Button"",
                     ""id"": ""d9ba9315-bc1d-4791-ad3e-9601169f85de"",
-                    ""expectedControlType"": ""Button"",
+                    ""expectedControlType"": """",
                     ""processors"": """",
                     ""interactions"": """",
                     ""initialStateCheck"": false
@@ -342,7 +342,16 @@ namespace GOC.FinalCharacterController
                     ""name"": ""Attacking"",
                     ""type"": ""Button"",
                     ""id"": ""42c2e099-ae12-4034-aaba-bb528b4d1e46"",
-                    ""expectedControlType"": ""Button"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""Aim"",
+                    ""type"": ""Button"",
+                    ""id"": ""c050b971-0f31-439b-a75c-1cb4fb14607e"",
+                    ""expectedControlType"": """",
                     ""processors"": """",
                     ""interactions"": """",
                     ""initialStateCheck"": false
@@ -370,6 +379,17 @@ namespace GOC.FinalCharacterController
                     ""action"": ""Attacking"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""95ea77e5-b484-44b1-890a-5e5ca3ace5f1"",
+                    ""path"": ""<Mouse>/rightButton"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Aim"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
                 }
             ]
         }
@@ -390,6 +410,7 @@ namespace GOC.FinalCharacterController
             m_PlayerActionsMap = asset.FindActionMap("PlayerActionsMap", throwIfNotFound: true);
             m_PlayerActionsMap_Gathering = m_PlayerActionsMap.FindAction("Gathering", throwIfNotFound: true);
             m_PlayerActionsMap_Attacking = m_PlayerActionsMap.FindAction("Attacking", throwIfNotFound: true);
+            m_PlayerActionsMap_Aim = m_PlayerActionsMap.FindAction("Aim", throwIfNotFound: true);
         }
 
         ~@PlayerControls()
@@ -710,6 +731,7 @@ namespace GOC.FinalCharacterController
         private List<IPlayerActionsMapActions> m_PlayerActionsMapActionsCallbackInterfaces = new List<IPlayerActionsMapActions>();
         private readonly InputAction m_PlayerActionsMap_Gathering;
         private readonly InputAction m_PlayerActionsMap_Attacking;
+        private readonly InputAction m_PlayerActionsMap_Aim;
         /// <summary>
         /// Provides access to input actions defined in input action map "PlayerActionsMap".
         /// </summary>
@@ -729,6 +751,10 @@ namespace GOC.FinalCharacterController
             /// Provides access to the underlying input action "PlayerActionsMap/Attacking".
             /// </summary>
             public InputAction @Attacking => m_Wrapper.m_PlayerActionsMap_Attacking;
+            /// <summary>
+            /// Provides access to the underlying input action "PlayerActionsMap/Aim".
+            /// </summary>
+            public InputAction @Aim => m_Wrapper.m_PlayerActionsMap_Aim;
             /// <summary>
             /// Provides access to the underlying input action map instance.
             /// </summary>
@@ -761,6 +787,9 @@ namespace GOC.FinalCharacterController
                 @Attacking.started += instance.OnAttacking;
                 @Attacking.performed += instance.OnAttacking;
                 @Attacking.canceled += instance.OnAttacking;
+                @Aim.started += instance.OnAim;
+                @Aim.performed += instance.OnAim;
+                @Aim.canceled += instance.OnAim;
             }
 
             /// <summary>
@@ -778,6 +807,9 @@ namespace GOC.FinalCharacterController
                 @Attacking.started -= instance.OnAttacking;
                 @Attacking.performed -= instance.OnAttacking;
                 @Attacking.canceled -= instance.OnAttacking;
+                @Aim.started -= instance.OnAim;
+                @Aim.performed -= instance.OnAim;
+                @Aim.canceled -= instance.OnAim;
             }
 
             /// <summary>
@@ -890,6 +922,13 @@ namespace GOC.FinalCharacterController
             /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
             /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
             void OnAttacking(InputAction.CallbackContext context);
+            /// <summary>
+            /// Method invoked when associated input action "Aim" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+            /// </summary>
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+            /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+            void OnAim(InputAction.CallbackContext context);
         }
     }
 }

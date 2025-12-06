@@ -2,6 +2,8 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.Animations.Rigging;
+using Cinemachine;
 
 namespace GOC.FinalCharacterController
 {
@@ -12,6 +14,8 @@ namespace GOC.FinalCharacterController
         [Header("Components")]
         [SerializeField] private CharacterController _characterController;
         [SerializeField] private Camera _playerCamera;
+        [SerializeField] private CinemachineVirtualCamera _normalCamera;
+        [SerializeField] private CinemachineVirtualCamera _aimCamera;
         public float RotationMismatch { get; private set; } = 0f;
         public bool IsRotatingToTarget { get; private set; } = false;
 
@@ -39,10 +43,18 @@ namespace GOC.FinalCharacterController
         public float lookSenseV = 0.1f;
         public float lookLimitV = 89f;
 
+        [Header("Aiming Settings")]
+        public float aimSpeed = 1.5f;
+        public float aimAcceleration = 25f;  // Increased to overcome drag
+        public float aimLookSenseH = 0.05f;
+        public float aimLookSenseV = 0.05f;
+        [SerializeField] private MultiAimConstraint _aimConstraint;
+
         [Header("Environment Details")]
         [SerializeField] private LayerMask _groundLayers;
 
         private PlayerLocomotionInput _playerLocomotionInput;
+        private PlayerActionsInput _playerActionsInput;
         private PlayerState _playerState;
 
         private Vector2 _cameraRotation = Vector2.zero;
@@ -56,12 +68,14 @@ namespace GOC.FinalCharacterController
         private float _stepOffset;
 
         private PlayerMovementState _lastMovementState = PlayerMovementState.Falling;
+        private bool _wasAiming = false;
         #endregion
 
         #region Startup
         private void Awake()
         {
             _playerLocomotionInput = GetComponent<PlayerLocomotionInput>();
+            _playerActionsInput = GetComponent<PlayerActionsInput>();
             _playerState = GetComponent<PlayerState>();
 
             _antiBump = sprintSpeed;
@@ -73,7 +87,7 @@ namespace GOC.FinalCharacterController
         private void Update()
         {
             UpdateMovementState();
-            print(_characterController.velocity);
+            HandleAimingConstraint();
 
             HandleVerticalMovement();
             HandleLateralMovement();
@@ -89,10 +103,25 @@ namespace GOC.FinalCharacterController
             bool isSprinting = _playerLocomotionInput.SprintToggledOn && isMovingLaterally;          //order
             bool isWalking = isMovingLaterally && (!canRun || _playerLocomotionInput.WalkToggledOn); //matters
             bool isGrounded = IsGrounded();
+            bool isAiming = _playerActionsInput != null && _playerActionsInput.IsAiming;
 
-            PlayerMovementState lateralState = isWalking ? PlayerMovementState.Walking :
-                                               isSprinting ? PlayerMovementState.Sprinting :
-                                               isMovingLaterally || isMovementInput ? PlayerMovementState.Running : PlayerMovementState.Idling;
+
+            PlayerMovementState lateralState;
+            
+            if (isAiming)
+            {
+                // When aiming, still allow movement but at reduced speeds
+                lateralState = isWalking ? PlayerMovementState.Walking :
+                               isSprinting ? PlayerMovementState.Sprinting :
+                               isMovingLaterally || isMovementInput ? PlayerMovementState.Running :
+                               PlayerMovementState.Aiming; // Only idle aiming if no movement
+            }
+            else
+            {
+                lateralState = isWalking ? PlayerMovementState.Walking :
+                               isSprinting ? PlayerMovementState.Sprinting :
+                               isMovingLaterally || isMovementInput ? PlayerMovementState.Running : PlayerMovementState.Idling;
+            }
 
             _playerState.SetPlayerMovementState(lateralState);
 
@@ -113,6 +142,42 @@ namespace GOC.FinalCharacterController
             {
                 _characterController.stepOffset = _stepOffset;
             }
+        }
+
+        private void HandleAimingConstraint()
+        {
+            bool isAiming = _playerActionsInput != null && _playerActionsInput.IsAiming;
+
+            // Handle IK constraint
+            if (_aimConstraint != null)
+            {
+                // Instant enable/disable IK constraint when aiming state changes
+                if (isAiming && !_wasAiming)
+                {
+                    _aimConstraint.weight = 1.0f;
+                }
+                else if (!isAiming && _wasAiming)
+                {
+                    _aimConstraint.weight = 0.0f;
+                }
+            }
+
+            // Handle camera switching
+            if (_normalCamera != null && _aimCamera != null)
+            {
+                if (isAiming && !_wasAiming)
+                {
+                    _normalCamera.Priority = 0;
+                    _aimCamera.Priority = 10;
+                }
+                else if (!isAiming && _wasAiming)
+                {
+                    _normalCamera.Priority = 10;
+                    _aimCamera.Priority = 0;
+                }
+            }
+
+            _wasAiming = isAiming;
         }
 
         private void HandleVerticalMovement()
@@ -148,15 +213,20 @@ namespace GOC.FinalCharacterController
             bool isSprinting = _playerState.CurrentPlayerMovementState == PlayerMovementState.Sprinting;
             bool isGrounded = _playerState.InGroundedState();
             bool isWalking = _playerState.CurrentPlayerMovementState == PlayerMovementState.Walking;
+            bool isAiming = _playerActionsInput != null && _playerActionsInput.IsAiming; // Check aiming input directly
 
             // State dependent acceleration and speed
             float lateralAcceleration = !isGrounded ? inAirAcceleration :
+                                        isAiming ? aimAcceleration :
                                         isWalking ? walkAcceleration :
                                         isSprinting ? sprintAcceleration : runAcceleration;
 
             float clampLateralMagnitude = !isGrounded ? sprintSpeed :
+                                          isAiming ? aimSpeed :
                                           isWalking ? walkSpeed :
                                           isSprinting ? sprintSpeed : runSpeed;
+
+
 
             Vector3 cameraForwardXZ = new Vector3(_playerCamera.transform.forward.x, 0f, _playerCamera.transform.forward.z).normalized;
             Vector3 cameraRightXZ = new Vector3(_playerCamera.transform.right.x, 0f, _playerCamera.transform.right.z).normalized;
@@ -198,17 +268,26 @@ namespace GOC.FinalCharacterController
 
         private void UpdateCameraRotation()
         {
-            _cameraRotation.x += lookSenseH * _playerLocomotionInput.LookInput.x;
-            _cameraRotation.y = Mathf.Clamp(_cameraRotation.y - lookSenseV * _playerLocomotionInput.LookInput.y, -lookLimitV, lookLimitV);
+            bool isAiming = _playerActionsInput != null && _playerActionsInput.IsAiming; // Check aiming input directly
+            float currentLookSenseH = isAiming ? aimLookSenseH : lookSenseH;
+            float currentLookSenseV = isAiming ? aimLookSenseV : lookSenseV;
 
-            _playerTargetRotation.x += transform.eulerAngles.x + lookSenseH * _playerLocomotionInput.LookInput.x;
+            _cameraRotation.x += currentLookSenseH * _playerLocomotionInput.LookInput.x;
+            _cameraRotation.y = Mathf.Clamp(_cameraRotation.y - currentLookSenseV * _playerLocomotionInput.LookInput.y, -lookLimitV, lookLimitV);
 
-            float rotationTolerance = 90f;
+            _playerTargetRotation.x += transform.eulerAngles.x + currentLookSenseH * _playerLocomotionInput.LookInput.x;
+
+            float rotationTolerance = 0f;
             bool isIdling = _playerState.CurrentPlayerMovementState == PlayerMovementState.Idling;
             IsRotatingToTarget = _rotatingToTargetTimer > 0;
 
-            // ROTATE if we're not idling
-            if (!isIdling)
+            // When aiming, always rotate to face camera direction
+            if (isAiming)
+            {
+                RotatePlayerToTarget();
+            }
+            // ROTATE if we're not idling and not aiming
+            else if (!isIdling)
             {
                 RotatePlayerToTarget();
             }
